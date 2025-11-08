@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { gsap, useGSAP } from '../utils/gsapConfig';
+import { useAuth } from '../hooks/useAuth';
 import SocialLogin from '../components/auth/SocialLogin';
 import { AlertBanner, Button } from '../components/ui';
 
@@ -26,11 +26,15 @@ interface ForgotPasswordFormData {
 
 type AuthMode = 'login' | 'signup' | 'forgot-password';
 
-const AuthPage: React.FC = () => {
+const AuthPage = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string>('');
   const [authSuccess, setAuthSuccess] = useState<string>('');
+  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, register } = useAuth();
   
   const containerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -39,8 +43,6 @@ const AuthPage: React.FC = () => {
   const loginForm = useForm<LoginFormData>();
   const signupForm = useForm<SignupFormData>();
   const forgotPasswordForm = useForm<ForgotPasswordFormData>();
-
-  // Removed excessive animations
 
   const switchAuthMode = (newMode: AuthMode) => {
     setAuthMode(newMode);
@@ -53,21 +55,16 @@ const AuthPage: React.FC = () => {
     setAuthError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await login(data.email, data.password);
+      setAuthSuccess('Login successful! Redirecting...');
       
-      // Mock authentication logic
-      if (data.email === 'admin@crimeguard.com' && data.password === 'password') {
-        setAuthSuccess('Login successful! Redirecting...');
-        setTimeout(() => {
-          // Redirect to dashboard or home
-          window.location.href = '/';
-        }, 1500);
-      } else {
-        setAuthError('Invalid email or password. Please try again.');
-      }
+      // Redirect to intended destination or dashboard
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 1000);
     } catch (error) {
-      setAuthError('An error occurred. Please try again.');
+      setAuthError('Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -84,13 +81,17 @@ const AuthPage: React.FC = () => {
     }
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await register({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
       
-      setAuthSuccess('Account created successfully! Please check your email to verify your account.');
+      setAuthSuccess('Account created successfully! Redirecting to dashboard...');
       setTimeout(() => {
-        switchAuthMode('login');
-      }, 2000);
+        navigate('/dashboard', { replace: true });
+      }, 1000);
     } catch (error) {
       setAuthError('An error occurred during signup. Please try again.');
     } finally {
@@ -98,7 +99,7 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  const handleForgotPassword = async (data: ForgotPasswordFormData) => {
+  const handleForgotPassword = async (_data: ForgotPasswordFormData) => {
     setIsLoading(true);
     setAuthError('');
     
